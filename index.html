@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的雲端工作牆 (Firebase版)</title>
+    <title>我的雲端工作牆 (v5.0)</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
@@ -13,18 +13,28 @@
             --text-color: #f5f5f7;
             --glass-bg: rgba(28, 28, 30, 0.65);
             --glass-border: rgba(255, 255, 255, 0.1);
+            
+            /* 主題色定義 */
             --accent-red: #ff453a;
             --accent-orange: #ff9f0a;
             --accent-green: #30d158;
+            --accent-archive: #78909c; /* 新增：藍灰色 */
+
             --card-bg: rgba(60, 60, 65, 0.7);
             
             /* 暗色系主題色 (審核區) */
             --dark-red-bg: rgba(60, 10, 10, 0.85);
             --dark-red-border: #5c1b1b;
+            
             --dark-orange-bg: rgba(60, 35, 5, 0.85);
             --dark-orange-border: #633308;
+            
             --dark-green-bg: rgba(10, 45, 15, 0.85);
             --dark-green-border: #144018;
+
+            /* 新增：封存區暗色 */
+            --dark-archive-bg: rgba(30, 40, 45, 0.85);
+            --dark-archive-border: #37474f;
         }
 
         body {
@@ -68,7 +78,7 @@
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background-color: #ff453a; /* Default red (offline) */
+            background-color: #ff453a;
             transition: background-color 0.3s;
         }
 
@@ -112,14 +122,22 @@
             flex-shrink: 0;
         }
         
+        /* 1. 極重要 (紅) */
         #col-urgent { border-top: 3px solid var(--accent-red); }
         #col-urgent .column-header { color: var(--accent-red); background: linear-gradient(to bottom, rgba(255, 69, 58, 0.1), transparent); }
 
+        /* 2. 下周 (橘) */
         #col-next-week { border-top: 3px solid var(--accent-orange); }
         #col-next-week .column-header { color: var(--accent-orange); background: linear-gradient(to bottom, rgba(255, 159, 10, 0.1), transparent); }
 
+        /* 3. 長期 (綠) */
         #col-long-term { border-top: 3px solid var(--accent-green); }
         #col-long-term .column-header { color: var(--accent-green); background: linear-gradient(to bottom, rgba(48, 209, 88, 0.1), transparent); }
+
+        /* 4. 封存 (藍灰) - 新增 */
+        #col-archive { border-top: 3px solid var(--accent-archive); }
+        #col-archive .column-header { color: var(--accent-archive); background: linear-gradient(to bottom, rgba(120, 144, 156, 0.1), transparent); }
+
 
         .note-list {
             flex-grow: 1;
@@ -174,10 +192,13 @@
 
         .note:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.4); border-color: rgba(255, 255, 255, 0.2); z-index: 10; }
 
-        /* Review Zone Colors */
+        /* Review Zone Colors (暗色模式) */
         #review-urgent .note { background-color: var(--dark-red-bg); border-color: var(--dark-red-border); color: #ffcccc; }
         #review-next .note { background-color: var(--dark-orange-bg); border-color: var(--dark-orange-border); color: #ffeeba; }
         #review-long .note { background-color: var(--dark-green-bg); border-color: var(--dark-green-border); color: #d1e7dd; }
+        
+        /* 封存區暗色 */
+        #review-archive .note { background-color: var(--dark-archive-bg); border-color: var(--dark-archive-border); color: #cfd8dc; }
 
         .review-list .note { font-size: 0.9rem; padding: 10px; opacity: 0.9; }
         .review-list .note:hover { opacity: 1; }
@@ -295,22 +316,37 @@
                 </div>
             </div>
         </div>
+
+        <div class="column" id="col-archive">
+            <div class="column-header"><span contenteditable="true" class="list-title" id="title-archive">📦 封存區 / 已完成</span></div>
+            <div class="note-list" id="archive-list"></div>
+            <div class="review-zone">
+                <div class="review-header">歷史歸檔</div>
+                <div class="note-list review-list" id="review-archive"></div>
+            </div>
+            <div class="list-footer">
+                <div class="add-card-wrapper">
+                    <input type="text" class="new-card-input" id="input-archive" placeholder="新增事項..." onkeypress="handleInputKey(event, 'archive-list', this)">
+                    <button class="mini-btn" onclick="addCardFromInput('archive-list', 'input-archive')">＋</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
         // ======================================================
-        // ▼ 設定區域：已為您修復格式 ▼
+        // ▼ 設定區域：請將你的 Firebase 金鑰貼回來 ▼
         // ======================================================
         
-        // 你的金鑰配置 (從你貼的代碼中提取並修正為 Compat 格式)
         const firebaseConfig = {
-          apiKey: "AIzaSyCZB-kPCA0zQ3yIuYjeYrQDWflWlBLsgw0",
-          authDomain: "worktable-6d1bb.firebaseapp.com",
-          databaseURL: "https://worktable-6d1bb-default-rtdb.asia-southeast1.firebasedatabase.app",
-          projectId: "worktable-6d1bb",
-          storageBucket: "worktable-6d1bb.firebasestorage.app",
-          messagingSenderId: "615931449902",
-          appId: "1:615931449902:web:112d9e17071456c32945bf"
+            apiKey: "AIzaSyCZB-kPCA0zQ3yIuYjeYrQDWflWlBLsgw0",
+  authDomain: "worktable-6d1bb.firebaseapp.com",
+  databaseURL: "https://worktable-6d1bb-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "worktable-6d1bb",
+  storageBucket: "worktable-6d1bb.firebasestorage.app",
+  messagingSenderId: "615931449902",
+  appId: "1:615931449902:web:112d9e17071456c32945bf"
+            // ... (請將原本 index.html 裡的設定複製貼上到這裡)
         };
 
         // ======================================================
@@ -323,17 +359,15 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             if (!firebaseConfig.apiKey) {
-                alert('⚠️ 尚未設定 Firebase Config！');
+                alert('⚠️ 請記得在程式碼中填回你的 Firebase Config！');
                 return;
             }
 
-            // 初始化 Firebase (使用全域變數方式)
             try {
                 firebase.initializeApp(firebaseConfig);
                 db = firebase.database();
-                dbRef = db.ref('workBoardData'); // 資料庫節點
+                dbRef = db.ref('workBoardData');
 
-                // 監聽連線狀態
                 const connectedRef = db.ref(".info/connected");
                 connectedRef.on("value", (snap) => {
                     if (snap.val() === true) {
@@ -347,23 +381,17 @@
                     }
                 });
 
-                // 監聽資料變更
                 dbRef.on('value', (snapshot) => {
                     const data = snapshot.val();
-                    if (data) {
-                        renderBoard(data);
-                    } else {
-                        // 若是新資料庫，初始化空資料
-                        saveDataToCloud(); 
-                    }
+                    if (data) renderBoard(data);
+                    else saveDataToCloud();
                 });
 
             } catch (error) {
                 console.error("Firebase 初始化失敗:", error);
-                alert("Firebase 連線失敗，請檢查 Console 錯誤訊息");
+                alert("Firebase 連線失敗");
             }
 
-            // 綁定標題編輯事件
             document.querySelectorAll('.list-title').forEach(el => {
                 el.addEventListener('input', debounceSave);
             });
@@ -371,15 +399,18 @@
             setupDragAndDrop();
         });
 
-        // --- 畫面渲染 ---
         function renderBoard(data) {
+            // 新增封存區的對應
             const map = {
                 'urgent-list': data.urgent,
                 'next-week-list': data.nextWeek,
                 'long-term-list': data.longTerm,
+                'archive-list': data.archive, // New
+                
                 'review-urgent': data.reviewUrgent,
                 'review-next': data.reviewNext,
-                'review-long': data.reviewLong
+                'review-long': data.reviewLong,
+                'review-archive': data.reviewArchive // New
             };
             
             const activeEl = document.activeElement;
@@ -388,22 +419,25 @@
             if(!isEditing) {
                 for (const [listId, notes] of Object.entries(map)) {
                     const list = document.getElementById(listId);
-                    list.innerHTML = '';
-                    if (notes) {
-                        notes.forEach(noteData => {
-                            list.appendChild(createNoteElement(noteData.text, noteData.id));
-                        });
+                    if(list) {
+                        list.innerHTML = '';
+                        if (notes) {
+                            notes.forEach(noteData => {
+                                list.appendChild(createNoteElement(noteData.text, noteData.id));
+                            });
+                        }
                     }
                 }
                 if(data.titles) {
                     document.getElementById('title-urgent').innerText = data.titles.urgent || '🔥 極重要 / 截稿近';
                     document.getElementById('title-next').innerText = data.titles.nextWeek || '📅 下周重要事務';
                     document.getElementById('title-long').innerText = data.titles.longTerm || '🚀 長期規劃';
+                    // 新增標題更新
+                    document.getElementById('title-archive').innerText = data.titles.archive || '📦 封存區 / 已完成';
                 }
             }
         }
 
-        // --- 資料操作 ---
         function createNoteElement(text = '', id = null) {
             const note = document.createElement('div');
             note.classList.add('note');
@@ -457,7 +491,6 @@
             if (event.key === 'Enter') addCardFromInput(listId, inputElement.id);
         }
 
-        // --- 核心同步邏輯 ---
         function saveDataToCloud() {
             if (!dbRef) return;
 
@@ -465,13 +498,18 @@
                 urgent: getListContent('urgent-list'),
                 nextWeek: getListContent('next-week-list'),
                 longTerm: getListContent('long-term-list'),
+                archive: getListContent('archive-list'), // New
+                
                 reviewUrgent: getListContent('review-urgent'),
                 reviewNext: getListContent('review-next'),
                 reviewLong: getListContent('review-long'),
+                reviewArchive: getListContent('review-archive'), // New
+                
                 titles: {
                     urgent: document.getElementById('title-urgent').innerText,
                     nextWeek: document.getElementById('title-next').innerText,
-                    longTerm: document.getElementById('title-long').innerText
+                    longTerm: document.getElementById('title-long').innerText,
+                    archive: document.getElementById('title-archive').innerText // New
                 },
                 lastUpdated: Date.now()
             };
@@ -484,6 +522,7 @@
 
         function getListContent(listId) {
             const list = document.getElementById(listId);
+            if (!list) return [];
             return [...list.querySelectorAll('.note')].map(note => ({
                 id: note.id,
                 text: note.querySelector('.note-content').innerText
@@ -496,7 +535,6 @@
             saveTimer = setTimeout(saveDataToCloud, 800);
         }
 
-        // --- 拖放設定 ---
         function setupDragAndDrop() {
             const allLists = document.querySelectorAll('.note-list');
             allLists.forEach(list => {
