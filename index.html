@@ -3,27 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的雲端工作牆 (v6.2 安全分流版)</title>
+    <title>我的雲端工作牆 (v7.1 Chrono Aurora)</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    
     <script src="config.js"></script>
 
     <style>
-        /* ... (保留原本 v6.1 的 CSS，完全不用動，為了篇幅我這裡省略 CSS 區塊) ... */
-        /* 請將 v6.1 的 CSS 貼在這裡 */
-        :root { --bg-color: #000000; --text-color: #f5f5f7; --glass-bg: rgba(28, 28, 30, 0.65); --glass-border: rgba(255, 255, 255, 0.1); --accent-red: #ff453a; --accent-orange: #ff9f0a; --accent-green: #30d158; --accent-archive: #78909c; --accent-inbox: #bf5af2; --card-bg: rgba(60, 60, 65, 0.7); }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); background-image: radial-gradient(at 0% 0%, rgba(50, 50, 60, 0.5) 0px, transparent 50%), radial-gradient(at 100% 0%, rgba(20, 20, 25, 0.5) 0px, transparent 50%); color: var(--text-color); margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        :root {
+            --bg-color: #000000; --text-color: #f5f5f7;
+            --glass-bg: rgba(28, 28, 30, 0.65); --glass-border: rgba(255, 255, 255, 0.1);
+            --card-bg: rgba(60, 60, 65, 0.7);
+            
+            /* Colors */
+            --accent-red: #ff453a; --accent-orange: #ff9f0a; --accent-green: #30d158;
+            --accent-archive: #78909c; --accent-inbox: #bf5af2;
+            
+            /* Dark Mode Review Zones */
+            --dark-red-bg: rgba(70, 20, 20, 0.9); --dark-red-border: #6e2525;
+            --dark-orange-bg: rgba(70, 40, 10, 0.9); --dark-orange-border: #7a4210;
+            --dark-green-bg: rgba(20, 55, 25, 0.9); --dark-green-border: #1e5224;
+            --dark-archive-bg: rgba(40, 50, 55, 0.9); --dark-archive-border: #455a64;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(at 0% 0%, rgba(50, 50, 60, 0.5) 0px, transparent 50%), radial-gradient(at 100% 0%, rgba(20, 20, 25, 0.5) 0px, transparent 50%);
+            color: var(--text-color); margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+            transition: box-shadow 0.5s; /* For Alert Flashing */
+        }
+
+        /* Alert Flashing Animation */
+        @keyframes flash-alert {
+            0% { box-shadow: inset 0 0 0 0 transparent; }
+            50% { box-shadow: inset 0 0 50px 20px rgba(255, 69, 58, 0.8); }
+            100% { box-shadow: inset 0 0 0 0 transparent; }
+        }
+        body.time-up { animation: flash-alert 1s infinite; }
+
+        /* Toolbar */
         .toolbar { padding: 8px 20px; display: flex; align-items: center; justify-content: space-between; background: rgba(0, 0, 0, 0.2); backdrop-filter: blur(10px); border-bottom: 1px solid var(--glass-border); flex-shrink: 0; }
         h1 { margin: 0; font-size: 1rem; font-weight: 600; opacity: 0.9; }
         .connection-status { font-size: 0.75rem; display: flex; align-items: center; gap: 6px; color: #888; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #ff453a; transition: background-color 0.3s; }
-        .inbox-section { flex-shrink: 0; margin: 10px 20px 0 20px; padding: 8px; background: rgba(191, 90, 242, 0.1); border: 1px dashed var(--accent-inbox); border-radius: 10px; display: flex; align-items: center; gap: 10px; height: 70px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #aaa; transition: background-color 0.3s; }
+        
+        /* --- Top Container --- */
+        .top-container {
+            flex-shrink: 0; display: flex; gap: 15px; padding: 15px 20px 5px 20px; height: 110px; /* Height increased for bigger clock */
+        }
+
+        /* Inbox Section */
+        .inbox-section {
+            flex-grow: 1; background: rgba(191, 90, 242, 0.1); border: 1px dashed var(--accent-inbox); border-radius: 12px; 
+            display: flex; align-items: center; gap: 10px; padding: 8px 15px; min-width: 0;
+        }
         .inbox-header { display: flex; flex-direction: column; justify-content: center; min-width: 100px; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 10px; }
         .inbox-title { color: var(--accent-inbox); font-weight: bold; font-size: 0.9rem; }
         .inbox-input { background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; padding: 4px 8px; color: white; font-size: 0.85rem; outline: none; width: 100%; margin-top: 4px; }
         .inbox-list { flex-grow: 1; display: flex; flex-direction: row; gap: 8px; overflow-x: auto; overflow-y: hidden; height: 100%; align-items: center; padding-right: 5px; scrollbar-width: thin; }
         .inbox-list .note { min-width: 200px; max-width: 200px; margin-bottom: 0; flex-shrink: 0; }
+
+        /* --- TIMER SECTION (New Design) --- */
+        .timer-section {
+            flex-shrink: 0; width: 280px; /* Slightly wider */
+            /* 神秘暗色漸層：深藍 -> 午夜紫 -> 墨綠 */
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            display: flex; flex-direction: column; justify-content: space-between;
+            padding: 12px 15px;
+            position: relative; overflow: hidden;
+        }
+        /* 增加一點流動光影 (Optional aesthetic) */
+        .timer-section::after {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        /* Real-time Clock (Huge) */
+        .clock-display {
+            font-size: 2.4rem; /* 字級加大 */
+            font-weight: 700;
+            color: rgba(255,255,255,0.95);
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+            text-shadow: 0 0 15px rgba(100, 210, 255, 0.4); /* 微光 */
+            font-family: 'Segoe UI', Roboto, monospace;
+            margin-top: 2px;
+        }
+        .clock-date {
+            font-size: 0.75rem; color: rgba(255,255,255,0.5); text-align: center; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 2px;
+        }
+
+        /* Pomodoro Controls */
+        .pomodoro-container {
+            display: flex; align-items: center; justify-content: space-between;
+            background: rgba(0,0,0,0.2); border-radius: 8px; padding: 4px 8px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .pomo-time {
+            font-size: 1.2rem; font-weight: bold; color: #ddd; font-variant-numeric: tabular-nums;
+            min-width: 60px; text-align: center;
+        }
+        .pomo-time.running { color: var(--accent-orange); text-shadow: 0 0 5px rgba(255, 159, 10, 0.5); }
+
+        .pomo-controls { display: flex; gap: 4px; align-items: center; }
+        
+        .pomo-btn {
+            background: rgba(255,255,255,0.1); border: none; color: white;
+            width: 24px; height: 24px; border-radius: 4px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s; font-size: 0.7rem;
+        }
+        .pomo-btn:hover { background: rgba(255,255,255,0.25); }
+        .pomo-btn.main-action { width: 28px; height: 28px; background: rgba(255, 255, 255, 0.15); font-size: 0.9rem; }
+        .pomo-btn.main-action:hover { background: rgba(48, 209, 88, 0.4); }
+
+        /* Board & Columns */
         .board { flex-grow: 1; display: flex; gap: 12px; overflow-x: auto; padding: 15px; height: 100%; box-sizing: border-box; }
         .column { flex: 0 0 300px; max-width: 300px; background-color: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 10px; display: flex; flex-direction: column; max-height: 100%; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); backdrop-filter: blur(20px); overflow: hidden; }
         .column-header { padding: 10px 12px; font-weight: 600; font-size: 0.9rem; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); }
@@ -35,292 +135,270 @@
         .review-zone { flex-shrink: 0; min-height: 80px; max-height: 40%; display: flex; flex-direction: column; background: rgba(0, 0, 0, 0.3); border-top: 2px solid rgba(255, 255, 255, 0.1); }
         .review-header { font-size: 0.7rem; color: rgba(255,255,255,0.5); padding: 6px 10px; font-weight: bold; background: rgba(255,255,255,0.03); }
         .review-list { padding: 6px 10px; overflow-y: auto; flex-grow: 1; }
+
+        /* Focus Slot */
+        .focus-slot { flex-shrink: 0; margin: 8px; border: 1px dashed rgba(255, 69, 58, 0.3); border-radius: 6px; background: rgba(255, 69, 58, 0.05); display: flex; flex-direction: column; transition: all 0.2s; height: auto; }
+        .focus-slot:empty { min-height: 60px; justify-content: center; align-items: center; }
+        .focus-slot:empty::before { content: 'Doing (拖曳至此)'; color: rgba(255, 69, 58, 0.5); font-size: 0.8rem; pointer-events: none; }
+        .focus-slot:not(:empty) { border: none; background: transparent; min-height: 0; }
+        .focus-slot .note { background-color: var(--accent-red) !important; color: white !important; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 15px rgba(255, 69, 58, 0.4); margin-bottom: 0; }
+        .focus-slot .note .note-content { color: white; font-weight: 500; }
+        .focus-slot .note .note-meta { border-top-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.9); }
+        .focus-slot .note .link-btn { color: white; text-decoration: underline; }
+        .focus-slot .note .tool-icon { color: rgba(255,255,255,0.8); }
+        .focus-slot .note .tool-icon:hover { background-color: rgba(255,255,255,0.3); color: white; }
+        .focus-slot .note .date-badge { background: rgba(255,255,255,0.25); color: white; }
+
+        /* Note Styles */
         .note { background-color: var(--card-bg); padding: 10px; margin-bottom: 8px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 1px 3px rgba(0,0,0,0.2); cursor: grab; position: relative; transition: all 0.2s ease; animation: fadeIn 0.3s ease; display: flex; flex-direction: column; gap: 4px; border-left: 3px solid transparent; }
         .note:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.4); border-color: rgba(255, 255, 255, 0.2); z-index: 10; } .note:active { cursor: grabbing; }
         .note-content { outline: none; word-break: break-word; font-size: 0.9rem; line-height: 1.4; padding-right: 15px; }
         .tools { position: absolute; top: 4px; right: 4px; display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; background: rgba(0,0,0,0.5); border-radius: 4px; padding: 2px; } .note:hover .tools { opacity: 1; }
-        .tool-icon { cursor: pointer; width: 18px; height: 18px; text-align: center; line-height: 18px; border-radius: 3px; font-size: 12px; color: #ddd; } .tool-icon:hover { background: rgba(255,255,255,0.3); color: white; } .delete-icon:hover { background: rgba(255, 69, 58, 0.8); }
+        .tool-icon { cursor: pointer; width: 18px; height: 18px; text-align: center; line-height: 18px; border-radius: 3px; font-size: 12px; color: #ddd; }
         .note-meta { display: none; align-items: center; justify-content: flex-start; gap: 8px; font-size: 0.75rem; color: #aaa; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px; } .note-meta.has-content { display: flex; }
         .date-badge { background: rgba(255,255,255,0.1); padding: 1px 5px; border-radius: 3px; display: none; font-size: 0.7rem; } .date-badge.active { display: inline-block; } .date-badge.urgent { background: rgba(255, 159, 10, 0.3); color: #ffbc5e; } .date-badge.overdue { background: rgba(255, 69, 58, 0.3); color: #ff8a84; }
-        .link-btn { text-decoration: none; color: #64d2ff; cursor: pointer; display: none; align-items: center; gap: 4px; } .link-btn.active { display: flex; } .link-btn:hover { text-decoration: underline; }
-        .settings-panel { display: none; background: rgba(0,0,0,0.5); padding: 8px; border-radius: 4px; margin-top: 4px; font-size: 0.8rem; border: 1px solid rgba(255,255,255,0.1); } .settings-panel.open { display: block; }
-        .settings-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; } .settings-row:last-child { margin-bottom: 0; }
-        input[type="date"] { background: rgba(255,255,255,0.1); border: none; color: white; padding: 2px; border-radius: 3px; font-size: 0.8rem; }
+        .link-btn { text-decoration: none; color: #64d2ff; cursor: pointer; display: none; align-items: center; gap: 4px; } .link-btn.active { display: flex; }
+        .settings-panel { display: none; background: rgba(0,0,0,0.9); padding: 8px; border-radius: 4px; margin-top: 4px; font-size: 0.8rem; border: 1px solid rgba(255,255,255,0.2); z-index: 20; position: relative;} .settings-panel.open { display: block; }
+        .settings-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+        input[type="date"] { background: rgba(255,255,255,0.1); border: none; color: white; padding: 2px; border-radius: 3px; }
         .color-dots { display: flex; gap: 4px; } .color-dot { width: 14px; height: 14px; border-radius: 50%; cursor: pointer; border: 1px solid transparent; } .color-dot.selected { border-color: white; }
         #review-urgent .note { background-color: var(--dark-red-bg); border-color: var(--dark-red-border); } #review-next .note { background-color: var(--dark-orange-bg); border-color: var(--dark-orange-border); } #review-long .note { background-color: var(--dark-green-bg); border-color: var(--dark-green-border); } #review-archive .note { background-color: var(--dark-archive-bg); border-color: var(--dark-archive-border); }
         .list-footer { padding: 8px; border-top: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.25); flex-shrink: 0; } .new-card-input { flex-grow: 1; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; padding: 6px 8px; color: white; outline: none; font-size: 0.85rem;} .mini-btn { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); border-radius: 6px; cursor: pointer; padding: 0 8px; margin-left: 6px;}
+        
+        @media (max-width: 600px) { .top-container { flex-direction: column; height: auto; } .timer-section { width: 100%; margin-bottom: 10px; } }
     </style>
 </head>
 <body>
 
     <div class="toolbar">
-        <h1>雲端工作牆 <span style="font-size:0.7em; opacity:0.6; font-weight:normal;" id="version-tag">v6.2 Secure</span></h1>
+        <h1>雲端工作牆 <span style="font-size:0.7em; opacity:0.6; font-weight:normal;" id="version-tag">v7.1 Aurora</span></h1>
         <div class="connection-status"><div id="status-dot" class="status-dot"></div><span id="status-text">初始化...</span></div>
     </div>
 
-    <div class="inbox-section">
-        <div class="inbox-header">
-            <div class="inbox-title">📥 收集箱</div>
-            <input type="text" class="inbox-input" id="input-inbox" placeholder="按 Enter 新增..." onkeypress="handleInputKey(event, 'inbox-list', this)">
+    <div class="top-container">
+        <div class="inbox-section">
+            <div class="inbox-header">
+                <div class="inbox-title">📥 收集箱</div>
+                <input type="text" class="inbox-input" id="input-inbox" placeholder="Enter 新增..." onkeypress="handleInputKey(event, 'inbox-list', this)">
+            </div>
+            <div class="note-list inbox-list" id="inbox-list"></div>
         </div>
-        <div class="note-list inbox-list" id="inbox-list"></div>
+
+        <div class="timer-section">
+            <div>
+                <div class="clock-display" id="real-clock">--:--:--</div>
+                <div class="clock-date" id="real-date">LOADING...</div>
+            </div>
+            <div class="pomodoro-container">
+                <div class="pomo-controls">
+                    <button class="pomo-btn" onclick="adjustTime(-5)" title="-5分鐘">-5</button>
+                </div>
+                <div class="pomo-time" id="pomo-display">25:00</div>
+                <div class="pomo-controls">
+                    <button class="pomo-btn" onclick="adjustTime(5)" title="+5分鐘">+5</button>
+                    <button class="pomo-btn main-action" onclick="toggleTimer()" title="開始/暫停">⏯</button>
+                    <button class="pomo-btn" onclick="resetTimer()" title="重置">↺</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="board">
         <div class="column" id="col-urgent">
             <div class="column-header"><span contenteditable="true" class="list-title" id="title-urgent">🔥 極重要</span></div>
+            <div class="note-list focus-slot" id="focus-slot"></div>
             <div class="note-list" id="urgent-list"></div>
-            <div class="review-zone">
-                <div class="review-header">暫放 / 審核</div>
-                <div class="note-list review-list" id="review-urgent"></div>
-            </div>
+            <div class="review-zone"><div class="review-header">暫放 / 審核</div><div class="note-list review-list" id="review-urgent"></div></div>
             <div class="list-footer"><div style="display:flex"><input type="text" class="new-card-input" id="input-urgent" placeholder="新增..." onkeypress="handleInputKey(event, 'urgent-list', this)"><button class="mini-btn" onclick="addCardFromInput('urgent-list', 'input-urgent')">＋</button></div></div>
         </div>
         <div class="column" id="col-next-week">
             <div class="column-header"><span contenteditable="true" class="list-title" id="title-next">📅 下周事項</span></div>
             <div class="note-list" id="next-week-list"></div>
-            <div class="review-zone">
-                <div class="review-header">暫放 / 審核</div>
-                <div class="note-list review-list" id="review-next"></div>
-            </div>
+            <div class="review-zone"><div class="review-header">暫放 / 審核</div><div class="note-list review-list" id="review-next"></div></div>
             <div class="list-footer"><div style="display:flex"><input type="text" class="new-card-input" id="input-next" placeholder="新增..." onkeypress="handleInputKey(event, 'next-week-list', this)"><button class="mini-btn" onclick="addCardFromInput('next-week-list', 'input-next')">＋</button></div></div>
         </div>
         <div class="column" id="col-long-term">
             <div class="column-header"><span contenteditable="true" class="list-title" id="title-long">🚀 長期規劃</span></div>
             <div class="note-list" id="long-term-list"></div>
-            <div class="review-zone">
-                <div class="review-header">暫放 / 暫一段落</div>
-                <div class="note-list review-list" id="review-long"></div>
-            </div>
+            <div class="review-zone"><div class="review-header">暫放 / 暫一段落</div><div class="note-list review-list" id="review-long"></div></div>
             <div class="list-footer"><div style="display:flex"><input type="text" class="new-card-input" id="input-long" placeholder="新增..." onkeypress="handleInputKey(event, 'long-term-list', this)"><button class="mini-btn" onclick="addCardFromInput('long-term-list', 'input-long')">＋</button></div></div>
         </div>
         <div class="column" id="col-archive">
             <div class="column-header"><span contenteditable="true" class="list-title" id="title-archive">📦 已完成</span></div>
             <div class="note-list" id="archive-list"></div>
-            <div class="review-zone">
-                <div class="review-header">歷史歸檔</div>
-                <div class="note-list review-list" id="review-archive"></div>
-            </div>
+            <div class="review-zone"><div class="review-header">歷史歸檔</div><div class="note-list review-list" id="review-archive"></div></div>
             <div class="list-footer"><div style="display:flex"><input type="text" class="new-card-input" id="input-archive" placeholder="新增..." onkeypress="handleInputKey(event, 'archive-list', this)"><button class="mini-btn" onclick="addCardFromInput('archive-list', 'input-archive')">＋</button></div></div>
         </div>
     </div>
 
     <script>
-        let db; let dbRef; let isConnected = false;
-        // 判斷是否為「無資料庫演示模式」
-        let isDemoMode = false;
+        let db; let dbRef; let isConnected = false; let isDemoMode = false;
+        let timerInterval; let timeLeft = 25 * 60; let isTimerRunning = false;
 
         document.addEventListener('DOMContentLoaded', () => {
-            // 安全檢查：config.js 是否存在且有內容
-            if (typeof firebaseConfig === 'undefined' || !firebaseConfig.apiKey) {
-                initDemoMode();
-            } else {
-                initFirebase();
-            }
-
-            // UI 綁定
+            if (typeof firebaseConfig === 'undefined' || !firebaseConfig.apiKey) { initDemoMode(); } else { initFirebase(); }
             document.querySelectorAll('.list-title').forEach(el => el.addEventListener('input', debounceSave));
             setupDragAndDrop();
+            startRealClock();
+            updateTimerDisplay();
         });
 
-        function initDemoMode() {
-            isDemoMode = true;
-            document.getElementById('status-dot').style.backgroundColor = '#aaa';
-            document.getElementById('status-text').innerText = '公開演示模式 (無儲存)';
-            document.getElementById('version-tag').innerText = 'v6.2 Demo';
-            console.log("進入演示模式：資料不會上傳");
+        // --- Real-time Clock ---
+        function startRealClock() {
+            const update = () => {
+                const now = new Date();
+                // HH:MM:SS
+                document.getElementById('real-clock').innerText = now.toLocaleTimeString('en-GB', { hour12: false });
+                // Weekday Date
+                const options = { weekday: 'short', month: 'short', day: 'numeric' };
+                document.getElementById('real-date').innerText = now.toLocaleDateString('en-US', options);
+            };
+            setInterval(update, 1000);
+            update();
         }
 
+        // --- Pomodoro Timer Logic ---
+        function toggleTimer() {
+            if (isTimerRunning) {
+                clearInterval(timerInterval);
+                isTimerRunning = false;
+            } else {
+                // Remove alert state if exists
+                document.body.classList.remove('time-up');
+                isTimerRunning = true;
+                timerInterval = setInterval(() => {
+                    if (timeLeft > 0) {
+                        timeLeft--;
+                        updateTimerDisplay();
+                    } else {
+                        triggerAlarm();
+                    }
+                }, 1000);
+            }
+            updateTimerDisplay();
+        }
+
+        function adjustTime(minutes) {
+            timeLeft += minutes * 60;
+            if (timeLeft < 0) timeLeft = 0;
+            updateTimerDisplay();
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            timeLeft = 25 * 60;
+            document.body.classList.remove('time-up'); // Stop flashing
+            updateTimerDisplay();
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            const display = document.getElementById('pomo-display');
+            display.innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            if (isTimerRunning) display.classList.add('running'); else display.classList.remove('running');
+        }
+
+        function triggerAlarm() {
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            updateTimerDisplay();
+            
+            // 1. Visual Alert: Flashing Background
+            document.body.classList.add('time-up');
+            
+            // 2. Audio Alert: Generate Beep using Web Audio API (No external file needed)
+            playBeep();
+            
+            // Auto-stop visual alert after 5 seconds
+            setTimeout(() => { document.body.classList.remove('time-up'); }, 5000);
+        }
+
+        // Simple Beep Generator
+        function playBeep() {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 tone
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            
+            oscillator.start();
+            // Beep pattern: Beep... Beep... Beep
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
+            oscillator.stop(audioCtx.currentTime + 0.5);
+        }
+
+        // --- Firebase & Board Logic (Standard) ---
+        function initDemoMode() { isDemoMode = true; document.getElementById('status-dot').style.backgroundColor = '#aaa'; document.getElementById('status-text').innerText = '公開演示模式 (無儲存)'; }
         function initFirebase() {
             try {
-                firebase.initializeApp(firebaseConfig);
-                db = firebase.database();
-                dbRef = db.ref('workBoardData');
-                db.ref(".info/connected").on("value", (snap) => {
-                    document.getElementById('status-dot').style.backgroundColor = snap.val() ? '#30d158' : '#ff453a';
-                    document.getElementById('status-text').innerText = snap.val() ? '已連線 (私有)' : '離線';
-                });
-                dbRef.on('value', (snapshot) => {
-                    const data = snapshot.val();
-                    if (data) renderBoard(data);
-                    else saveDataToCloud();
-                });
-            } catch (error) {
-                console.error("Firebase Error", error);
-                alert("Firebase 設定有誤，切換至離線模式");
-                initDemoMode();
-            }
+                firebase.initializeApp(firebaseConfig); db = firebase.database(); dbRef = db.ref('workBoardData');
+                db.ref(".info/connected").on("value", (snap) => { document.getElementById('status-dot').style.backgroundColor = snap.val() ? '#30d158' : '#ff453a'; document.getElementById('status-text').innerText = snap.val() ? '已連線 (私有)' : '離線'; });
+                dbRef.on('value', (snapshot) => { const data = snapshot.val(); if (data) renderBoard(data); else saveDataToCloud(); });
+            } catch (error) { console.error("Firebase Error", error); initDemoMode(); }
         }
-
-        // 統一存檔入口
-        function saveDataToCloud() {
-            if (isDemoMode) {
-                console.log("演示模式：略過存檔");
-                return; 
-            }
-            if (!dbRef) return;
-            const data = {
-                inbox: getListContent('inbox-list'),
-                urgent: getListContent('urgent-list'), nextWeek: getListContent('next-week-list'),
-                longTerm: getListContent('long-term-list'), archive: getListContent('archive-list'),
-                reviewUrgent: getListContent('review-urgent'), reviewNext: getListContent('review-next'),
-                reviewLong: getListContent('review-long'), reviewArchive: getListContent('review-archive'),
-                titles: {
-                    urgent: document.getElementById('title-urgent').innerText,
-                    nextWeek: document.getElementById('title-next').innerText,
-                    longTerm: document.getElementById('title-long').innerText,
-                    archive: document.getElementById('title-archive').innerText
-                },
-                lastUpdated: Date.now()
-            };
-            dbRef.set(data).catch(e => console.error(e));
-        }
-
-        // --- 以下邏輯與 v6.1 完全相同，但為求完整一併附上 ---
-        
         function renderBoard(data) {
-            const map = {
-                'inbox-list': data.inbox, 'urgent-list': data.urgent, 'next-week-list': data.nextWeek,
-                'long-term-list': data.longTerm, 'archive-list': data.archive,
-                'review-urgent': data.reviewUrgent, 'review-next': data.reviewNext,
-                'review-long': data.reviewLong, 'review-archive': data.reviewArchive
-            };
-            const activeEl = document.activeElement;
-            const isEditing = activeEl && (activeEl.classList.contains('note-content') || activeEl.tagName === 'INPUT');
+            const map = { 'inbox-list': data.inbox, 'focus-slot': data.focus, 'urgent-list': data.urgent, 'next-week-list': data.nextWeek, 'long-term-list': data.longTerm, 'archive-list': data.archive, 'review-urgent': data.reviewUrgent, 'review-next': data.reviewNext, 'review-long': data.reviewLong, 'review-archive': data.reviewArchive };
+            const activeEl = document.activeElement; const isEditing = activeEl && (activeEl.classList.contains('note-content') || activeEl.tagName === 'INPUT');
             if(!isEditing) {
                 for (const [listId, notes] of Object.entries(map)) {
                     const list = document.getElementById(listId);
-                    if(list) {
-                        list.innerHTML = '';
-                        if (notes) notes.forEach(n => list.appendChild(createNoteElement(n)));
-                    }
+                    if(list) { list.innerHTML = ''; if (notes) notes.forEach(n => list.appendChild(createNoteElement(n))); }
                 }
-                if(data.titles) {
-                    document.getElementById('title-urgent').innerText = data.titles.urgent;
-                    document.getElementById('title-next').innerText = data.titles.nextWeek;
-                    document.getElementById('title-long').innerText = data.titles.longTerm;
-                    document.getElementById('title-archive').innerText = data.titles.archive;
-                }
+                if(data.titles) { document.getElementById('title-urgent').innerText = data.titles.urgent; document.getElementById('title-next').innerText = data.titles.nextWeek; document.getElementById('title-long').innerText = data.titles.longTerm; document.getElementById('title-archive').innerText = data.titles.archive; }
             }
         }
-
+        function saveDataToCloud() {
+            if (isDemoMode) return;
+            const focusList = document.getElementById('focus-slot'); const urgentList = document.getElementById('urgent-list');
+            while (focusList.children.length > 1) { const oldNote = focusList.firstElementChild; urgentList.insertBefore(oldNote, urgentList.firstElementChild); }
+            const data = { inbox: getListContent('inbox-list'), focus: getListContent('focus-slot'), urgent: getListContent('urgent-list'), nextWeek: getListContent('next-week-list'), longTerm: getListContent('long-term-list'), archive: getListContent('archive-list'), reviewUrgent: getListContent('review-urgent'), reviewNext: getListContent('review-next'), reviewLong: getListContent('review-long'), reviewArchive: getListContent('review-archive'), titles: { urgent: document.getElementById('title-urgent').innerText, nextWeek: document.getElementById('title-next').innerText, longTerm: document.getElementById('title-long').innerText, archive: document.getElementById('title-archive').innerText }, lastUpdated: Date.now() };
+            if(dbRef) dbRef.set(data).catch(e => console.error(e));
+        }
         function createNoteElement(data) {
             const noteData = (typeof data === 'string') ? { text: data, id: 'note-'+Date.now() } : data;
-            const note = document.createElement('div');
-            note.classList.add('note'); note.setAttribute('draggable', 'true'); note.id = noteData.id;
+            const note = document.createElement('div'); note.classList.add('note'); note.setAttribute('draggable', 'true'); note.id = noteData.id;
             if (noteData.tagColor) note.style.borderLeftColor = noteData.tagColor;
-
-            const content = document.createElement('div');
-            content.classList.add('note-content'); content.contentEditable = 'true'; content.innerText = noteData.text;
-            
+            const content = document.createElement('div'); content.classList.add('note-content'); content.contentEditable = 'true'; content.innerText = noteData.text;
             const tools = document.createElement('div'); tools.classList.add('tools');
-            const settingsBtn = document.createElement('div'); settingsBtn.classList.add('tool-icon'); settingsBtn.innerText = '⚙️';
-            settingsBtn.onclick = (e) => { e.stopPropagation(); toggleSettings(note); };
-            const delBtn = document.createElement('div'); delBtn.classList.add('tool-icon', 'delete-icon'); delBtn.innerText = '✕';
-            delBtn.onclick = (e) => { e.stopPropagation(); if(confirm('刪除？')) { note.remove(); saveDataToCloud(); } };
+            const settingsBtn = document.createElement('div'); settingsBtn.classList.add('tool-icon'); settingsBtn.innerText = '⚙️'; settingsBtn.onclick = (e) => { e.stopPropagation(); toggleSettings(note); };
+            const delBtn = document.createElement('div'); delBtn.classList.add('tool-icon', 'delete-icon'); delBtn.innerText = '✕'; delBtn.onclick = (e) => { e.stopPropagation(); if(confirm('刪除？')) { note.remove(); saveDataToCloud(); } };
             tools.appendChild(settingsBtn); tools.appendChild(delBtn);
-
             const meta = document.createElement('div'); meta.classList.add('note-meta');
-            const linkBtn = document.createElement('a'); linkBtn.classList.add('link-btn'); linkBtn.target = "_blank"; linkBtn.innerHTML = '<span>🔗</span>連結';
-            meta.appendChild(linkBtn);
+            const linkBtn = document.createElement('a'); linkBtn.classList.add('link-btn'); linkBtn.target = "_blank"; linkBtn.innerHTML = '<span>🔗</span>連結'; meta.appendChild(linkBtn);
             const dateBadge = document.createElement('span'); dateBadge.classList.add('date-badge'); meta.appendChild(dateBadge);
-
-            const checkMetaVisibility = () => {
-                const hasLink = updateLinkButton(note, content.innerText);
-                const hasDate = noteData.dueDate && noteData.dueDate !== '';
-                if(hasDate) updateDateDisplay(dateBadge, noteData.dueDate);
-                if (hasLink || hasDate) meta.classList.add('has-content'); else meta.classList.remove('has-content');
-            };
-            content.addEventListener('input', () => { checkMetaVisibility(); debounceSave(); });
-            setTimeout(() => checkMetaVisibility(), 0);
-
+            const checkMetaVisibility = () => { const hasLink = updateLinkButton(note, content.innerText); const hasDate = noteData.dueDate && noteData.dueDate !== ''; if(hasDate) updateDateDisplay(dateBadge, noteData.dueDate); if (hasLink || hasDate) meta.classList.add('has-content'); else meta.classList.remove('has-content'); };
+            content.addEventListener('input', () => { checkMetaVisibility(); debounceSave(); }); setTimeout(() => checkMetaVisibility(), 0);
             const settingsPanel = document.createElement('div'); settingsPanel.classList.add('settings-panel');
             const dateRow = document.createElement('div'); dateRow.classList.add('settings-row');
-            const dateInput = document.createElement('input'); dateInput.type = 'date';
-            if(noteData.dueDate) dateInput.value = noteData.dueDate;
-            dateInput.addEventListener('change', () => { noteData.dueDate = dateInput.value; checkMetaVisibility(); saveDataToCloud(); });
-            dateRow.innerHTML = '<span>到期日:</span>'; dateRow.appendChild(dateInput);
-
+            const dateInput = document.createElement('input'); dateInput.type = 'date'; if(noteData.dueDate) dateInput.value = noteData.dueDate; dateInput.addEventListener('change', () => { noteData.dueDate = dateInput.value; checkMetaVisibility(); saveDataToCloud(); }); dateRow.innerHTML = '<span>到期日:</span>'; dateRow.appendChild(dateInput);
             const colorRow = document.createElement('div'); colorRow.classList.add('settings-row'); colorRow.innerHTML = '<span>標籤:</span>';
             const colorsDiv = document.createElement('div'); colorsDiv.classList.add('color-dots');
-            const colors = ['#ff453a', '#0a84ff', '#30d158', '#ffd60a', '#bf5af2', 'transparent'];
-            colors.forEach(c => {
-                const dot = document.createElement('div'); dot.classList.add('color-dot');
-                dot.style.backgroundColor = c === 'transparent' ? '#333' : c;
-                dot.onclick = () => { note.style.borderLeftColor = c; saveDataToCloud(); };
-                colorsDiv.appendChild(dot);
-            });
-            colorRow.appendChild(colorsDiv);
+            const colors = ['#ff453a', '#0a84ff', '#30d158', '#ffd60a', '#bf5af2', 'transparent']; colors.forEach(c => { const dot = document.createElement('div'); dot.classList.add('color-dot'); dot.style.backgroundColor = c === 'transparent' ? '#333' : c; dot.onclick = () => { note.style.borderLeftColor = c; saveDataToCloud(); }; colorsDiv.appendChild(dot); }); colorRow.appendChild(colorsDiv);
             settingsPanel.appendChild(dateRow); settingsPanel.appendChild(colorRow);
-
             note.appendChild(tools); note.appendChild(content); note.appendChild(meta); note.appendChild(settingsPanel);
-            note.addEventListener('dragstart', () => note.classList.add('dragging'));
-            note.addEventListener('dragend', () => { note.classList.remove('dragging'); saveDataToCloud(); });
+            note.addEventListener('dragstart', () => note.classList.add('dragging')); note.addEventListener('dragend', () => { note.classList.remove('dragging'); saveDataToCloud(); });
             return note;
         }
-
         function updateDateDisplay(badge, dateStr) {
             if (!dateStr) { badge.classList.remove('active'); return; }
-            const due = new Date(dateStr); const now = new Date();
-            const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24)); 
+            const due = new Date(dateStr); const now = new Date(); const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24)); 
             badge.classList.add('active'); badge.classList.remove('urgent', 'overdue');
-            if (diffDays < 0) { badge.innerText = `逾期 ${Math.abs(diffDays)}天`; badge.classList.add('overdue'); }
-            else if (diffDays === 0) { badge.innerText = '今天'; badge.classList.add('urgent'); }
-            else if (diffDays <= 2) { badge.innerText = `剩 ${diffDays}天`; badge.classList.add('urgent'); }
-            else { badge.innerText = `${dateStr.slice(5)}`; }
+            if (diffDays < 0) { badge.innerText = `逾期 ${Math.abs(diffDays)}天`; badge.classList.add('overdue'); } else if (diffDays === 0) { badge.innerText = '今天'; badge.classList.add('urgent'); } else if (diffDays <= 2) { badge.innerText = `剩 ${diffDays}天`; badge.classList.add('urgent'); } else { badge.innerText = `${dateStr.slice(5)}`; }
         }
-
-        function updateLinkButton(note, text) {
-            const linkBtn = note.querySelector('.link-btn');
-            const urlRegex = /(https?:\/\/[^\s]+)/g;
-            const match = text.match(urlRegex);
-            if (match) { linkBtn.href = match[0]; linkBtn.classList.add('active'); return true; }
-            else { linkBtn.classList.remove('active'); return false; }
-        }
-        function toggleSettings(note) {
-            const panel = note.querySelector('.settings-panel'); const isOpen = panel.classList.contains('open');
-            document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('open'));
-            if (!isOpen) panel.classList.add('open');
-        }
-        function addCardFromInput(listId, inputId) {
-            const input = document.getElementById(inputId); const text = input.value.trim(); if (!text) return;
-            const list = document.getElementById(listId);
-            const newNoteData = { text: text, id: 'note-'+Date.now(), dueDate: '', tagColor: '' };
-            list.appendChild(createNoteElement(newNoteData));
-            if(listId === 'inbox-list') list.scrollLeft = list.scrollWidth; else list.scrollTop = list.scrollHeight;
-            input.value = ''; input.focus(); saveDataToCloud();
-        }
+        function updateLinkButton(note, text) { const linkBtn = note.querySelector('.link-btn'); const urlRegex = /(https?:\/\/[^\s]+)/g; const match = text.match(urlRegex); if (match) { linkBtn.href = match[0]; linkBtn.classList.add('active'); return true; } else { linkBtn.classList.remove('active'); return false; } }
+        function toggleSettings(note) { const panel = note.querySelector('.settings-panel'); const isOpen = panel.classList.contains('open'); document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('open')); if (!isOpen) panel.classList.add('open'); }
+        function addCardFromInput(listId, inputId) { const input = document.getElementById(inputId); const text = input.value.trim(); if (!text) return; const list = document.getElementById(listId); const newNoteData = { text: text, id: 'note-'+Date.now(), dueDate: '', tagColor: '' }; list.appendChild(createNoteElement(newNoteData)); if(listId === 'inbox-list') list.scrollLeft = list.scrollWidth; else list.scrollTop = list.scrollHeight; input.value = ''; input.focus(); saveDataToCloud(); }
         function handleInputKey(e, l, i) { if (e.key === 'Enter') addCardFromInput(l, i.id); }
-        function getListContent(listId) {
-            const list = document.getElementById(listId); if (!list) return [];
-            return [...list.querySelectorAll('.note')].map(note => ({
-                id: note.id,
-                text: note.querySelector('.note-content').innerText,
-                tagColor: note.style.borderLeftColor || '',
-                dueDate: note.querySelector('input[type="date"]').value || ''
-            }));
-        }
+        function getListContent(listId) { const list = document.getElementById(listId); if (!list) return []; return [...list.querySelectorAll('.note')].map(note => ({ id: note.id, text: note.querySelector('.note-content').innerText, tagColor: note.style.borderLeftColor || '', dueDate: note.querySelector('input[type="date"]').value || '' })); }
         let saveTimer; function debounceSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveDataToCloud, 800); }
-        function setupDragAndDrop() {
-            document.querySelectorAll('.note-list').forEach(list => {
-                list.addEventListener('dragover', e => {
-                    e.preventDefault();
-                    const isHorizontal = list.id === 'inbox-list';
-                    const afterElement = getDragAfterElement(list, isHorizontal ? e.clientX : e.clientY, isHorizontal);
-                    const draggable = document.querySelector('.dragging');
-                    if(draggable) { if (afterElement == null) list.appendChild(draggable); else list.insertBefore(draggable, afterElement); }
-                });
-            });
-        }
-        function getDragAfterElement(container, pos, isHorizontal) {
-            const draggableElements = [...container.querySelectorAll('.note:not(.dragging)')];
-            return draggableElements.reduce((closest, child) => {
-                const box = child.getBoundingClientRect();
-                const boxCenter = isHorizontal ? box.left + box.width / 2 : box.top + box.height / 2;
-                const offset = pos - boxCenter;
-                if (offset < 0 && offset > closest.offset) return { offset: offset, element: child }; else return closest;
-            }, { offset: Number.NEGATIVE_INFINITY }).element;
-        }
+        function setupDragAndDrop() { document.querySelectorAll('.note-list').forEach(list => { list.addEventListener('dragover', e => { e.preventDefault(); const isHorizontal = list.id === 'inbox-list'; const afterElement = getDragAfterElement(list, isHorizontal ? e.clientX : e.clientY, isHorizontal); const draggable = document.querySelector('.dragging'); if(draggable) { if (afterElement == null) list.appendChild(draggable); else list.insertBefore(draggable, afterElement); } }); }); }
+        function getDragAfterElement(container, pos, isHorizontal) { const draggableElements = [...container.querySelectorAll('.note:not(.dragging)')]; return draggableElements.reduce((closest, child) => { const box = child.getBoundingClientRect(); const boxCenter = isHorizontal ? box.left + box.width / 2 : box.top + box.height / 2; const offset = pos - boxCenter; if (offset < 0 && offset > closest.offset) return { offset: offset, element: child }; else return closest; }, { offset: Number.NEGATIVE_INFINITY }).element; }
     </script>
 </body>
 </html>
