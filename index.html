@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的雲端工作牆 (v5.0)</title>
+    <title>我的雲端工作牆 (v5.2)</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
@@ -14,27 +14,24 @@
             --glass-bg: rgba(28, 28, 30, 0.65);
             --glass-border: rgba(255, 255, 255, 0.1);
             
-            /* 主題色定義 */
+            /* 主題色 */
             --accent-red: #ff453a;
             --accent-orange: #ff9f0a;
             --accent-green: #30d158;
-            --accent-archive: #78909c; /* 新增：藍灰色 */
+            --accent-archive: #78909c; 
+            --accent-inbox: #bf5af2; /* 新增：收集箱紫色 */
 
             --card-bg: rgba(60, 60, 65, 0.7);
             
-            /* 暗色系主題色 (審核區) */
-            --dark-red-bg: rgba(60, 10, 10, 0.85);
-            --dark-red-border: #5c1b1b;
-            
-            --dark-orange-bg: rgba(60, 35, 5, 0.85);
-            --dark-orange-border: #633308;
-            
-            --dark-green-bg: rgba(10, 45, 15, 0.85);
-            --dark-green-border: #144018;
-
-            /* 新增：封存區暗色 */
-            --dark-archive-bg: rgba(30, 40, 45, 0.85);
-            --dark-archive-border: #37474f;
+            /* 審核區暗色背景 */
+            --dark-red-bg: rgba(70, 20, 20, 0.9);
+            --dark-red-border: #6e2525;
+            --dark-orange-bg: rgba(70, 40, 10, 0.9);
+            --dark-orange-border: #7a4210;
+            --dark-green-bg: rgba(20, 55, 25, 0.9);
+            --dark-green-border: #1e5224;
+            --dark-archive-bg: rgba(40, 50, 55, 0.9);
+            --dark-archive-border: #455a64;
         }
 
         body {
@@ -54,7 +51,7 @@
 
         /* --- Toolbar --- */
         .toolbar {
-            padding: 15px 20px;
+            padding: 10px 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -73,13 +70,69 @@
             gap: 6px;
             color: #888;
         }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #ff453a; transition: background-color 0.3s; }
 
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: #ff453a;
-            transition: background-color 0.3s;
+        /* --- NEW: Inbox Section (收集箱) --- */
+        .inbox-section {
+            flex-shrink: 0;
+            margin: 15px 20px 0 20px;
+            padding: 10px;
+            background: rgba(191, 90, 242, 0.1); /* 紫色背景淡化 */
+            border: 1px dashed var(--accent-inbox);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            height: 80px; /* 固定高度 */
+        }
+
+        .inbox-header {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 120px;
+            border-right: 1px solid rgba(255,255,255,0.1);
+            padding-right: 15px;
+        }
+
+        .inbox-title { color: var(--accent-inbox); font-weight: bold; font-size: 0.95rem; display: flex; align-items: center; gap: 5px; }
+        
+        .inbox-input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 6px 10px;
+            color: white;
+            font-size: 0.85rem;
+            outline: none;
+            width: 100%;
+            margin-top: 5px;
+        }
+        .inbox-input:focus { border-color: var(--accent-inbox); }
+
+        /* 橫向列表設定 */
+        .inbox-list {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: row; /* 橫向排列 */
+            gap: 10px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            height: 100%;
+            align-items: center;
+            padding-right: 10px;
+            scrollbar-width: thin;
+        }
+        
+        /* 收集箱內的卡片樣式微調 */
+        .inbox-list .note {
+            min-width: 200px;
+            max-width: 200px;
+            height: auto;
+            margin-bottom: 0; /* 移除底部間距 */
+            flex-shrink: 0;
+            background-color: rgba(60, 60, 65, 0.9);
+            border: 1px solid var(--accent-inbox);
         }
 
         /* --- Board Area --- */
@@ -107,6 +160,7 @@
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             transition: transform 0.2s;
+            overflow: hidden; 
         }
 
         .column-header {
@@ -122,22 +176,17 @@
             flex-shrink: 0;
         }
         
-        /* 1. 極重要 (紅) */
         #col-urgent { border-top: 3px solid var(--accent-red); }
         #col-urgent .column-header { color: var(--accent-red); background: linear-gradient(to bottom, rgba(255, 69, 58, 0.1), transparent); }
 
-        /* 2. 下周 (橘) */
         #col-next-week { border-top: 3px solid var(--accent-orange); }
         #col-next-week .column-header { color: var(--accent-orange); background: linear-gradient(to bottom, rgba(255, 159, 10, 0.1), transparent); }
 
-        /* 3. 長期 (綠) */
         #col-long-term { border-top: 3px solid var(--accent-green); }
         #col-long-term .column-header { color: var(--accent-green); background: linear-gradient(to bottom, rgba(48, 209, 88, 0.1), transparent); }
 
-        /* 4. 封存 (藍灰) - 新增 */
         #col-archive { border-top: 3px solid var(--accent-archive); }
         #col-archive .column-header { color: var(--accent-archive); background: linear-gradient(to bottom, rgba(120, 144, 156, 0.1), transparent); }
-
 
         .note-list {
             flex-grow: 1;
@@ -145,34 +194,34 @@
             padding: 12px;
             min-height: 100px;
             scrollbar-width: thin;
-            scrollbar-color: rgba(255,255,255,0.1) transparent;
         }
-        .note-list::-webkit-scrollbar { width: 6px; }
-        .note-list::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.1); border-radius: 10px; }
-
-        /* --- Review Zones --- */
+        
         .review-zone {
             flex-shrink: 0;
-            max-height: 35%;
+            min-height: 100px;
+            max-height: 40%;
             display: flex;
             flex-direction: column;
-            background: rgba(0, 0, 0, 0.15);
-            border-top: 1px dashed rgba(255, 255, 255, 0.15);
+            background: rgba(0, 0, 0, 0.3);
+            border-top: 2px solid rgba(255, 255, 255, 0.1); 
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
         }
 
         .review-header {
             font-size: 0.75rem;
-            color: rgba(255,255,255,0.4);
-            padding: 6px 12px;
+            color: rgba(255,255,255,0.5);
+            padding: 8px 12px;
             text-transform: uppercase;
             letter-spacing: 1px;
             display: flex;
             align-items: center;
             gap: 6px;
+            background: rgba(255,255,255,0.03);
+            font-weight: bold;
         }
-        .review-header::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; background-color: rgba(255,255,255,0.2); }
+        .review-header::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; background-color: rgba(255,255,255,0.3); }
 
-        .review-list { padding: 8px 12px; overflow-y: auto; min-height: 60px; scrollbar-width: thin; }
+        .review-list { padding: 8px 12px; overflow-y: auto; flex-grow: 1; min-height: 50px; scrollbar-width: thin; }
 
         /* --- Cards --- */
         .note {
@@ -189,44 +238,25 @@
             transition: all 0.2s ease;
             animation: fadeIn 0.3s ease;
         }
-
         .note:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.4); border-color: rgba(255, 255, 255, 0.2); z-index: 10; }
 
-        /* Review Zone Colors (暗色模式) */
+        /* Review Zone Colors */
         #review-urgent .note { background-color: var(--dark-red-bg); border-color: var(--dark-red-border); color: #ffcccc; }
         #review-next .note { background-color: var(--dark-orange-bg); border-color: var(--dark-orange-border); color: #ffeeba; }
         #review-long .note { background-color: var(--dark-green-bg); border-color: var(--dark-green-border); color: #d1e7dd; }
-        
-        /* 封存區暗色 */
         #review-archive .note { background-color: var(--dark-archive-bg); border-color: var(--dark-archive-border); color: #cfd8dc; }
-
-        .review-list .note { font-size: 0.9rem; padding: 10px; opacity: 0.9; }
-        .review-list .note:hover { opacity: 1; }
-
-        .note:active { cursor: grabbing; }
-        .note-content { outline: none; word-break: break-word; }
 
         .delete-btn {
             position: absolute;
-            top: 6px;
-            right: 6px;
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #888;
-            cursor: pointer;
-            opacity: 0;
-            transition: all 0.2s;
-            font-size: 14px;
+            top: 6px; right: 6px; width: 20px; height: 20px;
+            border-radius: 4px; display: flex; align-items: center; justify-content: center;
+            color: #888; cursor: pointer; opacity: 0; transition: all 0.2s; font-size: 14px;
         }
         .note:hover .delete-btn { opacity: 1; }
         .delete-btn:hover { background: rgba(255, 69, 58, 0.2); color: var(--accent-red); }
         .dragging { opacity: 0.4; transform: scale(0.95); }
 
-        /* --- Footer --- */
+        /* Footer */
         .list-footer {
             padding: 12px;
             border-top: 1px solid rgba(255,255,255,0.05);
@@ -240,12 +270,7 @@
             flex-grow: 1;
             background: rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 6px;
-            padding: 8px 10px;
-            color: white;
-            font-size: 0.9rem;
-            outline: none;
-            transition: border-color 0.2s;
+            border-radius: 6px; padding: 8px 10px; color: white; font-size: 0.9rem; outline: none; transition: border-color 0.2s;
         }
         .new-card-input:focus { border-color: rgba(255, 255, 255, 0.3); background: rgba(0, 0, 0, 0.5); }
         .mini-btn { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); border-radius: 6px; cursor: pointer; padding: 0 10px; }
@@ -255,7 +280,10 @@
         @media (max-width: 600px) {
             .board { flex-direction: column; overflow-y: auto; }
             .column { flex: none; max-width: 100%; margin-bottom: 20px; max-height: none; }
-            .review-zone { max-height: none; }
+            .review-zone { max-height: none; min-height: 120px; }
+            .inbox-section { flex-direction: column; height: auto; align-items: stretch; }
+            .inbox-header { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px; }
+            .inbox-list { min-height: 80px; }
         }
     </style>
 </head>
@@ -269,6 +297,14 @@
             <div id="status-dot" class="status-dot"></div>
             <span id="status-text">連接中...</span>
         </div>
+    </div>
+
+    <div class="inbox-section">
+        <div class="inbox-header">
+            <div class="inbox-title">📥 收集箱 / 暫放</div>
+            <input type="text" class="inbox-input" id="input-inbox" placeholder="輸入並按 Enter..." onkeypress="handleInputKey(event, 'inbox-list', this)">
+        </div>
+        <div class="note-list inbox-list" id="inbox-list"></div>
     </div>
 
     <div class="board">
@@ -335,18 +371,17 @@
 
     <script>
         // ======================================================
-        // ▼ 設定區域：請將你的 Firebase 金鑰貼回來 ▼
+        // ▼ 設定區域：請在此貼回你的 Firebase Config ▼
         // ======================================================
         
         const firebaseConfig = {
             apiKey: "AIzaSyCZB-kPCA0zQ3yIuYjeYrQDWflWlBLsgw0",
-  authDomain: "worktable-6d1bb.firebaseapp.com",
-  databaseURL: "https://worktable-6d1bb-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "worktable-6d1bb",
-  storageBucket: "worktable-6d1bb.firebasestorage.app",
-  messagingSenderId: "615931449902",
-  appId: "1:615931449902:web:112d9e17071456c32945bf"
-            // ... (請將原本 index.html 裡的設定複製貼上到這裡)
+            authDomain: "worktable-6d1bb.firebaseapp.com",
+            databaseURL: "https://worktable-6d1bb-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "worktable-6d1bb",
+            storageBucket: "worktable-6d1bb.firebasestorage.app",
+            messagingSenderId: "615931449902",
+            appId: "1:615931449902:web:112d9e17071456c32945bf"
         };
 
         // ======================================================
@@ -400,17 +435,17 @@
         });
 
         function renderBoard(data) {
-            // 新增封存區的對應
             const map = {
+                'inbox-list': data.inbox, // New Inbox
                 'urgent-list': data.urgent,
                 'next-week-list': data.nextWeek,
                 'long-term-list': data.longTerm,
-                'archive-list': data.archive, // New
+                'archive-list': data.archive,
                 
                 'review-urgent': data.reviewUrgent,
                 'review-next': data.reviewNext,
                 'review-long': data.reviewLong,
-                'review-archive': data.reviewArchive // New
+                'review-archive': data.reviewArchive
             };
             
             const activeEl = document.activeElement;
@@ -432,7 +467,6 @@
                     document.getElementById('title-urgent').innerText = data.titles.urgent || '🔥 極重要 / 截稿近';
                     document.getElementById('title-next').innerText = data.titles.nextWeek || '📅 下周重要事務';
                     document.getElementById('title-long').innerText = data.titles.longTerm || '🚀 長期規劃';
-                    // 新增標題更新
                     document.getElementById('title-archive').innerText = data.titles.archive || '📦 封存區 / 已完成';
                 }
             }
@@ -455,7 +489,7 @@
             delBtn.innerHTML = '✕';
             delBtn.onclick = (e) => {
                 e.stopPropagation();
-                if (confirm('確定刪除？')) {
+                if (confirm('確定刪除此卡片？')) {
                     note.remove();
                     saveDataToCloud();
                 }
@@ -480,7 +514,13 @@
             
             const list = document.getElementById(listId);
             list.appendChild(createNoteElement(text));
-            list.scrollTop = list.scrollHeight;
+            // 如果是 inbox (橫向)，捲動到最右邊；否則捲動到最下方
+            if(listId === 'inbox-list') {
+                 list.scrollLeft = list.scrollWidth;
+            } else {
+                 list.scrollTop = list.scrollHeight;
+            }
+            
             input.value = '';
             input.focus();
             
@@ -495,21 +535,22 @@
             if (!dbRef) return;
 
             const data = {
+                inbox: getListContent('inbox-list'), // New
                 urgent: getListContent('urgent-list'),
                 nextWeek: getListContent('next-week-list'),
                 longTerm: getListContent('long-term-list'),
-                archive: getListContent('archive-list'), // New
+                archive: getListContent('archive-list'),
                 
                 reviewUrgent: getListContent('review-urgent'),
                 reviewNext: getListContent('review-next'),
                 reviewLong: getListContent('review-long'),
-                reviewArchive: getListContent('review-archive'), // New
+                reviewArchive: getListContent('review-archive'),
                 
                 titles: {
                     urgent: document.getElementById('title-urgent').innerText,
                     nextWeek: document.getElementById('title-next').innerText,
                     longTerm: document.getElementById('title-long').innerText,
-                    archive: document.getElementById('title-archive').innerText // New
+                    archive: document.getElementById('title-archive').innerText
                 },
                 lastUpdated: Date.now()
             };
@@ -540,7 +581,11 @@
             allLists.forEach(list => {
                 list.addEventListener('dragover', e => {
                     e.preventDefault();
-                    const afterElement = getDragAfterElement(list, e.clientY);
+                    
+                    // 判斷是橫向列表(inbox)還是直向列表(column)
+                    const isHorizontal = list.id === 'inbox-list';
+                    const afterElement = getDragAfterElement(list, isHorizontal ? e.clientX : e.clientY, isHorizontal);
+                    
                     const draggable = document.querySelector('.dragging');
                     if(!draggable) return;
                     if (afterElement == null) {
@@ -552,11 +597,17 @@
             });
         }
 
-        function getDragAfterElement(container, y) {
+        // 支援橫向與直向的拖曳計算
+        function getDragAfterElement(container, pos, isHorizontal) {
             const draggableElements = [...container.querySelectorAll('.note:not(.dragging)')];
+
             return draggableElements.reduce((closest, child) => {
                 const box = child.getBoundingClientRect();
-                const offset = y - box.top - box.height / 2;
+                // 如果是橫向，計算 X 軸中心；如果是直向，計算 Y 軸中心
+                const boxCenter = isHorizontal ? box.left + box.width / 2 : box.top + box.height / 2;
+                const offset = pos - boxCenter;
+                
+                // 邏輯：offset < 0 代表滑鼠在元素的前半部/上半部
                 if (offset < 0 && offset > closest.offset) {
                     return { offset: offset, element: child };
                 } else {
